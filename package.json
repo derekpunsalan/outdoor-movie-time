@@ -1,0 +1,31 @@
+{
+  "name": "outdoor-movie-time",
+  "version": "0.1.0",
+  "description": "A web app that determines when it's dark enough to start an outdoor movie",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx serve .",
+    "build": "echo 'No build process needed for static site'",
+    "dev": "npx serve . -l 3000",
+    "deploy": "gh-pages -d ."
+  },
+  "keywords": [
+    "outdoor",
+    "movie",
+    "sunset",
+    "twilight",
+    "timing",
+    "web-app"
+  ],
+  "author": "Prism",
+  "license": "MIT",
+  "devDependencies": {
+    "gh-pages": "^6.0.0",
+    "serve": "^14.2.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/outdoor-movie-time.git"
+  },
+  "homepage": "https://yourusername.github.io/outdoor-movie-time"
+}
