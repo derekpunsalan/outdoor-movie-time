@@ -3,15 +3,62 @@ import './App.css'
 
 function App() {
   const [location, setLocation] = useState(null)
+  const [coordinates, setCoordinates] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [movieTime, setMovieTime] = useState(null)
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [showLocationEdit, setShowLocationEdit] = useState(false)
 
-  // Function to calculate sunset/twilight times for a given date
-  const calculateTimesForDate = (date) => {
-    // Mock calculation - in real implementation, this would use actual sunset API
+  // Function to fetch real sunset/twilight times from API
+  const fetchSunsetData = async (latitude, longitude, date) => {
+    try {
+      const dateStr = date.toISOString().split('T')[0] // Format as YYYY-MM-DD
+      const response = await fetch(
+        `https://api.sunrise-sunset.org/json?lat=${latitude}&lng=${longitude}&date=${dateStr}&formatted=0`
+      )
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch sunset data')
+      }
+      
+      const data = await response.json()
+      
+      if (data.status !== 'OK') {
+        throw new Error('API returned error status')
+      }
+      
+      const results = data.results
+      
+      // Convert UTC times to local time
+      const formatTime = (utcTimeString) => {
+        const date = new Date(utcTimeString)
+        return date.toLocaleTimeString('en-US', { 
+          hour: 'numeric', 
+          minute: '2-digit',
+          hour12: true 
+        })
+      }
+      
+      // Calculate recommended start time (15 minutes after civil twilight end)
+      const civilTwilightEnd = new Date(results.civil_twilight_end)
+      const recommendedStart = new Date(civilTwilightEnd.getTime() + 15 * 60 * 1000)
+      
+      return {
+        sunset: formatTime(results.sunset),
+        civilTwilight: formatTime(results.civil_twilight_end),
+        recommendedStart: formatTime(recommendedStart.toISOString()),
+        location: location || "San Francisco, CA"
+      }
+    } catch (error) {
+      console.error('Error fetching sunset data:', error)
+      // Fallback to mock data if API fails
+      return getMockData(date)
+    }
+  }
+
+  // Fallback mock data function
+  const getMockData = (date) => {
     const month = date.getMonth()
     const day = date.getDate()
     
@@ -44,16 +91,30 @@ function App() {
     }
   }
 
-  // Update movie times when date or location changes
+  // Update movie times when date or coordinates change
   useEffect(() => {
-    if (location) {
-      const times = calculateTimesForDate(selectedDate)
-      setMovieTime(times)
+    if (coordinates) {
+      const fetchTimes = async () => {
+        setLoading(true)
+        try {
+          const times = await fetchSunsetData(coordinates.lat, coordinates.lng, selectedDate)
+          setMovieTime(times)
+        } catch (error) {
+          console.error('Error fetching times:', error)
+          setError('Failed to fetch sunset data. Using fallback times.')
+          const times = getMockData(selectedDate)
+          setMovieTime(times)
+        } finally {
+          setLoading(false)
+        }
+      }
+      
+      fetchTimes()
     }
-  }, [selectedDate, location])
+  }, [selectedDate, coordinates])
 
 
-  const getCurrentLocation = () => {
+  const getCurrentLocation = async () => {
     setLoading(true)
     setError(null)
     
@@ -64,12 +125,33 @@ function App() {
     }
 
     navigator.geolocation.getCurrentPosition(
-      (position) => {
-        // Mock success - will implement real geocoding later
-        setLocation("San Francisco, CA")
+      async (position) => {
+        const { latitude, longitude } = position.coords
+        setCoordinates({ lat: latitude, lng: longitude })
+        
+        try {
+          // Reverse geocode to get city/state name
+          const response = await fetch(
+            `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
+          )
+          
+          if (response.ok) {
+            const data = await response.json()
+            // Use the most specific location available (neighborhood > city > locality)
+            const specificLocation = data.locality || data.city || 'Unknown City'
+            const state = data.principalSubdivision || 'Unknown State'
+            setLocation(`${specificLocation}, ${state}`)
+          } else {
+            setLocation("Current Location")
+          }
+        } catch (error) {
+          console.error('Error reverse geocoding:', error)
+          setLocation("Current Location")
+        }
+        
         setLoading(false)
         setShowLocationEdit(false)
-        // The useEffect will automatically calculate times when location is set
+        // The useEffect will automatically fetch times when coordinates are set
       },
       (error) => {
         setError("Unable to retrieve your location. Please try entering a zipcode.")
@@ -78,16 +160,40 @@ function App() {
     )
   }
 
-  const handleZipcodeSubmit = (zipcode) => {
+  const handleZipcodeSubmit = async (zipcode) => {
     setLoading(true)
     setError(null)
     
-    // Mock zipcode validation and geocoding
     if (zipcode.length === 5 && /^\d+$/.test(zipcode)) {
-      setLocation("San Francisco, CA")
-      setLoading(false)
-      setShowLocationEdit(false)
-      // The useEffect will automatically calculate times when location is set
+      try {
+        // Use a free geocoding service to convert zipcode to coordinates
+        const response = await fetch(`https://api.zippopotam.us/us/${zipcode}`)
+        
+        if (!response.ok) {
+          throw new Error('Invalid zipcode')
+        }
+        
+        const data = await response.json()
+        
+        if (!data.places || data.places.length === 0) {
+          throw new Error('No location data found for this zipcode')
+        }
+        
+        const place = data.places[0]
+        const { latitude, longitude } = place
+        const city = place['place name'] || 'Unknown City'
+        const state = place['state'] || 'Unknown State'
+        
+        setCoordinates({ lat: parseFloat(latitude), lng: parseFloat(longitude) })
+        setLocation(`${city}, ${state}`)
+        setLoading(false)
+        setShowLocationEdit(false)
+        // The useEffect will automatically fetch times when coordinates are set
+      } catch (error) {
+        console.error('Error geocoding zipcode:', error)
+        setError("Invalid zipcode. Please try again.")
+        setLoading(false)
+      }
     } else {
       setError("Please enter a valid 5-digit zipcode.")
       setLoading(false)
@@ -124,6 +230,7 @@ function App() {
 
   const clearLocation = () => {
     setLocation(null)
+    setCoordinates(null)
     setMovieTime(null)
     setShowLocationEdit(false)
     setError(null)
@@ -313,20 +420,27 @@ function App() {
               <h2>Sunset & Twilight Times</h2>
             </div>
             <div className="section-content">
-              <div className="time-info">
-                <div className="time-item">
-                  <span className="time-label">🌅 Sunset:</span>
-                  <span className="time-value">{movieTime.sunset}</span>
+              {loading ? (
+                <div className="loading">
+                  <div className="loading-spinner"></div>
+                  <span>Loading sunset data...</span>
                 </div>
-                <div className="time-item">
-                  <span className="time-label">🌆 Civil Twilight:</span>
-                  <span className="time-value">{movieTime.civilTwilight}</span>
+              ) : (
+                <div className="time-info">
+                  <div className="time-item">
+                    <span className="time-label">🌅 Sunset:</span>
+                    <span className="time-value">{movieTime.sunset}</span>
+                  </div>
+                  <div className="time-item">
+                    <span className="time-label">🌆 Civil Twilight:</span>
+                    <span className="time-value">{movieTime.civilTwilight}</span>
+                  </div>
+                  <div className="time-item recommended">
+                    <span className="time-label">🎬 Recommended Start:</span>
+                    <span className="time-value">{movieTime.recommendedStart}</span>
+                  </div>
                 </div>
-                <div className="time-item recommended">
-                  <span className="time-label">🎬 Recommended Start:</span>
-                  <span className="time-value">{movieTime.recommendedStart}</span>
-                </div>
-              </div>
+              )}
             </div>
           </section>
         )}

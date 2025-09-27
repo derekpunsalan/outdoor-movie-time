@@ -390,6 +390,29 @@ body {
   font-weight: 600;
 }
 
+/* Loading spinner */
+.loading {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: #CCCCCC;
+  font-size: 0.875rem;
+}
+
+.loading-spinner {
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid #333;
+  border-top: 2px solid #FFFFFF;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
 /* Coming soon */
 .coming-soon {
   color: #888;
