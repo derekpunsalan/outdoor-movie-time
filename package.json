@@ -1,31 +1,27 @@
 {
   "name": "outdoor-movie-time",
-  "version": "0.1.0",
-  "description": "A web app that determines when it's dark enough to start an outdoor movie",
-  "main": "index.html",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
   "scripts": {
-    "start": "npx serve .",
-    "build": "echo 'No build process needed for static site'",
-    "dev": "npx serve . -l 3000",
-    "deploy": "gh-pages -d ."
+    "dev": "vite",
+    "build": "vite build",
+    "lint": "eslint .",
+    "preview": "vite preview"
   },
-  "keywords": [
-    "outdoor",
-    "movie",
-    "sunset",
-    "twilight",
-    "timing",
-    "web-app"
-  ],
-  "author": "Prism",
-  "license": "MIT",
+  "dependencies": {
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
+  },
   "devDependencies": {
-    "gh-pages": "^6.0.0",
-    "serve": "^14.2.1"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/yourusername/outdoor-movie-time.git"
-  },
-  "homepage": "https://yourusername.github.io/outdoor-movie-time"
+    "@eslint/js": "^9.36.0",
+    "@types/react": "^19.1.13",
+    "@types/react-dom": "^19.1.9",
+    "@vitejs/plugin-react": "^5.0.3",
+    "eslint": "^9.36.0",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-refresh": "^0.4.20",
+    "globals": "^16.4.0",
+    "vite": "^7.1.7"
+  }
 }
